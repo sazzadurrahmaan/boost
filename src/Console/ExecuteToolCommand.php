@@ -80,7 +80,7 @@ class ExecuteToolCommand extends Command
             'content' => [
                 $response->content()->toTool($tool),
             ],
-        ]);
+        ], JSON_INVALID_UTF8_SUBSTITUTE);
 
         return static::SUCCESS;
     }
