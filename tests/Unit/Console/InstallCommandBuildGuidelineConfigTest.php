@@ -83,3 +83,29 @@ test('hasMcp is false when mcp is neither in selected features nor stored config
 
     expect($guidelineConfig->hasMcp)->toBeFalse();
 });
+
+test('hasSkills is true when skills are in stored config and running in explicit flag mode', function (): void {
+    $config = new Config;
+    $config->setSkills(['test-skill']);
+
+    $guidelineConfig = buildGuidelineConfigWith(
+        collect(['guidelines']),
+        $config,
+        explicitFlagMode: true,
+    );
+
+    expect($guidelineConfig->hasSkills)->toBeTrue();
+});
+
+test('hasSkills is false when skills are in stored config but running interactively without skills selected', function (): void {
+    $config = new Config;
+    $config->setSkills(['test-skill']);
+
+    $guidelineConfig = buildGuidelineConfigWith(
+        collect(['guidelines']),
+        $config,
+        explicitFlagMode: false,
+    );
+
+    expect($guidelineConfig->hasSkills)->toBeFalse();
+});
