@@ -264,3 +264,27 @@ it('only treats backslashes as escapes on mysql', function (string $driver, stri
     ['mysql', "SELECT 'a\\' AS x, 'b' AS y FROM users, 'c' AS z"],
     ['pgsql', "SELECT 'a\\' AS x, 'b' AS y FROM wp_users, 'c' AS z"],
 ]);
+
+it('encodes binary values as hex', function (): void {
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, "\x00\xFF\x10");
+    rewind($stream);
+
+    DB::shouldReceive('connection')->andReturnSelf();
+    DB::shouldReceive('getTablePrefix')->andReturn('');
+    DB::shouldReceive('getDriverName')->andReturn('pgsql');
+    DB::shouldReceive('beginTransaction');
+    DB::shouldReceive('statement')->andReturn(true);
+    DB::shouldReceive('rollBack');
+    DB::shouldReceive('select')->andReturn([
+        (object) ['id' => "\x11\xEF\x8F", 'data' => $stream, 'name' => 'café', 'size' => 3, 'deleted_at' => null],
+    ]);
+
+    $response = (new DatabaseQuery)->handle(new Request(['query' => 'SELECT * FROM files']));
+
+    expect($response)->isToolResult()
+        ->toolHasNoError()
+        ->toolJsonContentToMatchArray([
+            ['id' => '0x11ef8f', 'data' => '0x00ff10', 'name' => 'café', 'size' => 3, 'deleted_at' => null],
+        ]);
+});
