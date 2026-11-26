@@ -68,7 +68,7 @@ class DatabaseQuery extends Tool
             }
 
             return Response::json(
-                $this->runSelectViaReadOnlyTransaction($connection, $query)
+                $this->encodeBinaryValues($this->runSelectViaReadOnlyTransaction($connection, $query))
             );
         } catch (Throwable $throwable) {
             return Response::error('Query failed: '.$throwable->getMessage());
@@ -110,6 +110,27 @@ class DatabaseQuery extends Tool
                 $connection->statement('PRAGMA query_only = OFF');
             }
         }
+    }
+
+    /**
+     * Encode binary values as hex so the rows can be returned as JSON.
+     *
+     * @param  array<int, object>  $rows
+     * @return array<int, object>
+     */
+    protected function encodeBinaryValues(array $rows): array
+    {
+        return array_map(fn (object $row): object => (object) array_map($this->encodeBinaryValue(...), (array) $row), $rows);
+    }
+
+    protected function encodeBinaryValue(mixed $value): mixed
+    {
+        // PostgreSQL returns bytea columns as streams.
+        if (is_resource($value)) {
+            return '0x'.bin2hex((string) stream_get_contents($value));
+        }
+
+        return is_string($value) && ! mb_check_encoding($value, 'UTF-8') ? '0x'.bin2hex($value) : $value;
     }
 
     /**
